@@ -254,7 +254,7 @@ func (c *Config) ApplyEnvirontmentVariables() {
 
 func (c *Config) ApplyEnvirontmentVariable(key string, value interface{}) {
 	if env, ok := os.LookupEnv(key); ok {
-		c.log.Info("Applying environment variable", "key", key, "value", env)
+		c.log.Info("Applying environment variable", "key", key, "value", maskSensitiveData(key, env))
 		switch v := value.(type) {
 		case *string:
 			*v = env
@@ -284,8 +284,25 @@ func (c *Config) ApplyAppEnvironmentVariables(prefix string) {
 		if !found {
 			continue
 		}
-		c.log.Info("Applying app environment variable", "key", key, "value", value)
+		c.log.Info("Applying app environment variable", "key", key, "value", maskSensitiveData(key, value))
 		key = strings.ToLower(strings.TrimPrefix(key, prefix))
 		c.AppConfig[key] = value
 	}
+}
+
+func maskSensitiveData(key string, value interface{}) interface{} {
+	valueStr, ok := value.(string)
+	if !ok {
+		return value
+	}
+
+	sensitiveWords := []string{"password", "token", "key", "secret", "auth"}
+	keyLower := strings.ToLower(key)
+	for _, word := range sensitiveWords {
+		if strings.Contains(keyLower, word) {
+			return "********"
+		}
+	}
+
+	return valueStr
 }
